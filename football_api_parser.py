@@ -101,16 +101,11 @@ class FootballAPIWrapper:
         league_table = {}
         TeamInfo = namedtuple('TeamInfo', 'position team_name matches_played w d l goals_for goals_against gp points')
 
-     #   for sortedKey in sorted(dictionary):
-    #print dictionary[sortedKeY] # gives the values sorted by key
 
         for team in data_standings['teams']:
             league_table[team['stand_team_id']] = TeamInfo(team['stand_position'], team['stand_team_name'], team['stand_round'],
                            team['stand_overall_w'], team['stand_overall_d'], team['stand_overall_l'],
                            team['stand_overall_gs'], team['stand_overall_ga'], team['stand_gd'], team['stand_points'])
-
-        #for sortedValue in sorted(league_table['position'].values()):
-        #    print sortedValue # gives the values sorted by value
 
         return league_table
 
@@ -140,20 +135,3 @@ class FootballAPIWrapper:
         beginning_year = self.get_beginning_year(today.month, today.year)
         Dates = namedtuple("Dates", "today month beginning_year")
         return Dates(today_formatted, today.month, beginning_year)
-
-
-'''
-# cracking a standard league table
-# position, win, draw, loss, points, last 10 games (tendency)
-
-Example endpoints
-api/?Action=competitions&APIKey=####
-api/?Action=standings&comp_id=1204&APIKey=####
-api/?Action=today&comp_id=1204&APIKey=####
-api/?Action=fixtures&comp_id=1024&&match_date=[DATE_IN_d.m.Y_FORMAT]&APIKey=####
-api/?Action=commentaries&APIKey=###&match_id=[MATCH_ID]
-
-API2:
-http://api2.football-api.com/api/?Action=player&APIKey=[YOUR_API_KEY]&player_id=193
-http://api2.football-api.com/api/?Action=team&APIKey=[YOUR_API_KEY]&team_id=[team]
-'''
