@@ -2,22 +2,33 @@
 
 import urllib2
 import json
-from pprint import pprint
-import ast
-import os
 import datetime
 from collections import namedtuple
 from collections import OrderedDict
 import urllib
-import urlparse
+from flask import url_for
 
 '''
-    I need to output last 5 matches for a team for the team (tendency and result)
+    TODO: switch to API version 2
+    http://api2.football-api.com/api/?Action=team&APIKey=[YOUR_API_KEY]&team_id=[team]
 '''
 class FootballAPIWrapper:
-    def __init__(self):
+    def __init__(self, app=None):
+        self.app = app
+        if app is not None:
+            self.init_app(app)
+
         self.__premier_league_id = '1204'
         self.__base_url = 'http://football-api.com/api/?Action='
+        #self.__all_matches_data = url_for('data.all_matches')
+        self.proxy_on = True
+
+    def init_app(self, app):
+        '''if hasattr(app, 'teardown_appcontext'):
+            app.teardown_appcontext(self.teardown)
+        else:
+            app.teardown_request(self.teardown)'''
+        pass
 
     @staticmethod
     def get_beginning_year(current_month, current_year):
@@ -27,6 +38,16 @@ class FootballAPIWrapper:
         else:
             season_began_in_year = current_year - 1
         return season_began_in_year
+
+    @staticmethod
+    def get_end_year(current_month, current_year):
+        'checking in which year the season began'
+        if current_month > 7:
+            season_ends_in_year = current_year + 1
+        else:
+            season_ends_in_year = current_year
+        return season_ends_in_year
+
 
     def call_api(self, action=None, **kwargs):
         """ Call the Football API
@@ -56,6 +77,11 @@ class FootballAPIWrapper:
         print ("My url {}").format(url + '&%s' % params)
 
         try:
+            if (self.proxy_on):
+                proxy = urllib2.ProxyHandler({'http': 'http://proxy1.rgu.ac.uk:8080'})
+                opener = urllib2.build_opener(proxy)
+                urllib2.install_opener(opener)
+
             my_json = urllib2.urlopen(url + '&%s' % params)
         except urllib2.URLError, e:
             print 'URL error: ' + str(e.reason)
@@ -66,21 +92,71 @@ class FootballAPIWrapper:
 
         return output_data
 
-    def feed_teams_ids(self):
-        'Create an team name -> id relationship'
+    def feed_ids_names(self):
+        'Create an team id -> name relationship'
         action = 'standings'
         data_standings = self.call_api(action)
-        output_data = {}
 
         # feeding the dictionary
         output_data = {
-            team["stand_team_name"] : team["stand_team_id"]
+            team["stand_team_id"] : team["stand_team_name"]
             for team in data_standings['teams']
         }
 
         return output_data
 
-    def form_and_tendency(self, action):
+    def get_all_matches(self):
+        'Get the matches json from an API'
+        action = 'fixtures'
+        params = {'from_date': '01.08.' + str(self.date_tuple.beginning_year), 'to_date' : '31.05.' + str(self.date_tuple.end_year)}
+        all_matches = self.call_api(action, **params)
+        return all_matches
+
+    def write_data (self):
+        'Write matches json to the local file'
+        raw_data = {}
+        raw_data["date-time"] = self.date_tuple.today + ' ' + self.date_tuple.current_time
+        raw_data["matches"] = self.get_all_matches()["matches"]
+
+
+        with open('app/data/all_matches.json', mode = 'w') as outfile:
+            json.dump(raw_data, outfile)
+        outfile.close()
+
+    def feed_all_and_unplayed_matches(self):
+        '''
+        Create an named tuple with all matches for the season
+        Read the data from a local file
+        :return tuple of two arrays of tuples
+        '''
+
+        with open('app/data/all_matches.json', 'r') as localfile:
+            matches_data = json.load(localfile)
+        localfile.close()
+
+        MatchInfo = namedtuple('MatchInfo', 'id date time hometeam_id awayteam_id hometeam_score awayteam_score')
+        all_matches = []
+        unplayed_matches = []
+        MatchesAllAndUnplayed = namedtuple('MatchesAllAndUnplayed', 'all unplayed')
+
+        for m in matches_data:
+
+            matchInfo = MatchInfo(int(m['match_id']),
+                                  m['match_formatted_date'],
+                                  m['match_time'],
+                                  int(m['match_localteam_id']),
+                                  int(m['match_visitorteam_id']),
+                                  m['match_localteam_score'],
+                                  m['match_visitorteam_score']
+            )
+            all_matches.append(matchInfo)
+
+            if (matchInfo.awayteam_score == "?"):
+                unplayed_matches.append(matchInfo)
+
+        return MatchesAllAndUnplayed(all_matches, unplayed_matches)
+
+    def form_and_tendency(self):
         'I need to output last 5 matches for a team for the team (tendency and result)'
         action = 'fixtures'
         params = {'from_date': '01.08.' + str(self.date_tuple.beginning_year), 'to_date' :str(self.date_tuple.today)}
@@ -101,13 +177,19 @@ class FootballAPIWrapper:
         league_table = {}
         TeamInfo = namedtuple('TeamInfo', 'position team_name matches_played w d l goals_for goals_against gp points')
 
+     #   for sortedKey in sorted(dictionary):
+    #print dictionary[sortedKeY] # gives the values sorted by key
 
         for team in data_standings['teams']:
             league_table[team['stand_team_id']] = TeamInfo(team['stand_position'], team['stand_team_name'], team['stand_round'],
                            team['stand_overall_w'], team['stand_overall_d'], team['stand_overall_l'],
                            team['stand_overall_gs'], team['stand_overall_ga'], team['stand_gd'], team['stand_points'])
 
+        #for sortedValue in sorted(league_table['position'].values()):
+        #    print sortedValue # gives the values sorted by value
+
         return league_table
+
 
     @property
     def api_key(self):
@@ -118,20 +200,28 @@ class FootballAPIWrapper:
         self.api_key = value
 
     @property
-    def teams_ids(self):
-        self.teams_ids = self.feed_teams_ids()
-        return self.teams_ids
+    def ids_names(self):
+        self.ids_names = self.feed_ids_names()
+        return self.ids_names
 
     @property
-    def league_table(self):
-        self.league_table = self.feed_league_table()
-        return self.league_table
+    def all_matches(self):
+        self.all_matches = self.feed_all_and_unplayed_matches().all
+        return self.all_matches
+
+    @property
+    def unplayed_matches(self):
+        self.unplayed_matches = self.feed_all_and_unplayed_matches().unplayed
+        return self.unplayed_matches
 
     @property
     def date_tuple(self):
-        today = datetime.date.today()
+        today = datetime.datetime.now()
         today_formatted = today.strftime("%d.%m.%Y")
+        current_time = today.strftime("%H:%M")
 
         beginning_year = self.get_beginning_year(today.month, today.year)
-        Dates = namedtuple("Dates", "today month beginning_year")
-        return Dates(today_formatted, today.month, beginning_year)
+        end_year = self.get_end_year(today.month, today.year)
+
+        Dates = namedtuple("Dates", "today current_time month beginning_year end_year")
+        return Dates(today_formatted, current_time, today.month, beginning_year, end_year)
