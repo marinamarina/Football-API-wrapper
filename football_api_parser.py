@@ -21,7 +21,7 @@ class FootballAPIWrapper:
         self.__premier_league_id = '1204'
         self.__base_url = 'http://football-api.com/api/?Action='
         #self.__all_matches_data = url_for('data.all_matches')
-        self.proxy_on = True
+        self.proxy_on = False #university proxy
 
     def init_app(self, app):
         '''if hasattr(app, 'teardown_appcontext'):
