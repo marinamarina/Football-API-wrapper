@@ -3,23 +3,22 @@
 import urllib2
 import json
 import datetime
-from collections import namedtuple
-from collections import OrderedDict
+from collections import namedtuple, OrderedDict
 import urllib
+from flask import url_for
 
 '''
     TODO: switch to API version 2
     http://api2.football-api.com/api/?Action=team&APIKey=[YOUR_API_KEY]&team_id=[team]
 '''
 class FootballAPIWrapper:
-    def __init__(self, app=None):
-        self.app = app
+    def __init__(self, methodName='runTest'):
+        '''self.app = app
         if app is not None:
-            self.init_app(app)
+            self.init_app(app)'''
 
         self.__premier_league_id = '1204'
         self.__base_url = 'http://football-api.com/api/?Action='
-        #self.__all_matches_data = url_for('data.all_matches')
         self.proxy_on = False
 
     def init_app(self, app):
@@ -118,7 +117,7 @@ class FootballAPIWrapper:
         raw_data["matches"] = self.get_all_matches()["matches"]
 
 
-        with open('app/data/all_matches.json', mode = 'w') as outfile:
+        with open(self.data_dir + '/all_matches.json', mode = 'w') as outfile:
             json.dump(raw_data, outfile)
         outfile.close()
 
@@ -129,7 +128,7 @@ class FootballAPIWrapper:
         :return tuple of two arrays of tuples
         '''
 
-        with open('app/data/all_matches.json', 'r') as localfile:
+        with open(self.data_dir + '/all_matches.json', 'r') as localfile:
             matches_data = json.load(localfile)
         localfile.close()
 
@@ -200,6 +199,14 @@ class FootballAPIWrapper:
     @api_key.setter
     def api_key(self, value):
         self.api_key = value
+
+    @property
+    def data_dir(self):
+        return 'data'
+
+    @data_dir.setter
+    def data_dir(self, value):
+        self.data_dir = value
 
     @property
     def ids_names(self):
