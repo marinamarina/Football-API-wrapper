@@ -10,11 +10,10 @@ wrap = FootballAPIWrapper()
 
 <!--# set the api key
 -->
-wrap.api_key = 'api_key'
+faw = FootballAPIWrapper()
+faw.api_key = 'your_key'
+faw.data_dir = '/data/'
 
-dict1 = dict()
-ids_dict = {'Manchester': 1, 'Aston Villa': 3}
-
-pprint(wrap.played_matches)
+pprint(faw.played_matches)
 
 
