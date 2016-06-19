@@ -1,5 +1,6 @@
-# A Python wrapper around the Football API (http://football-api.com/)
-# Example usage of the module
+# A Python wrapper for the Football API 
+## (http://football-api.com/)
+## Example usage of the module
 
 `#! usr/bin/python
 from football_api_wrapper import FootballAPIWrapper
