@@ -1,5 +1,4 @@
 # A Python wrapper for the Football API 
-## (http://football-api.com/)
 ## Example usage of the module
 
 `#! usr/bin/python
